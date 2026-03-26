@@ -14,13 +14,15 @@ def generate_rss():
     
     # RSS 피드 초기화
     fg = FeedGenerator()
-    fg.title('나라일터 일반채용 모집공고')
+    fg.title('나라일터 일반채용 모집공고 (맞춤 필터링)')
     fg.link(href=url, rel='alternate')
-    fg.description('인사혁신처 나라일터 시스템의 일반채용 모집공고 RSS 피드입니다.')
+    fg.description('채용/모집/공고는 포함하고 서류/면접/합격은 제외한 맞춤형 RSS 피드입니다.')
     fg.language('ko')
     
     # 게시판 목록 파싱 (테이블의 각 행 추출)
     rows = soup.select('table tbody tr')
+    
+    count = 0 # 필터링된 공고 개수 확인용 변수
     
     for row in rows:
         columns = row.find_all('td')
@@ -37,6 +39,21 @@ def generate_rss():
                 
             title = title_tag.get_text(strip=True)
             href = title_tag.get('href', '')
+            
+            # ==========================================
+            # 🔍 [이중 키워드 필터링 로직]
+            # ==========================================
+            include_keywords = ["채용", "모집", "공고"]
+            exclude_keywords = ["서류", "면접", "합격"]
+            
+            # 1. 포함 키워드 검사: title 안에 include_keywords 중 하나라도 '없으면' 건너뜀
+            if not any(keyword in title for keyword in include_keywords):
+                continue
+                
+            # 2. 제외 키워드 검사: title 안에 exclude_keywords 중 하나라도 '있으면' 건너뜀
+            if any(keyword in title for keyword in exclude_keywords):
+                continue
+            # ==========================================
             
             # 자바스크립트 함수(ex: javascript:fn_view('1234')) 형태인 경우 게시글 번호 추출
             link = url
@@ -60,13 +77,15 @@ def generate_rss():
             fe.description(f"<b>기관명:</b> {institution}<br><b>공고게시일:</b> {post_date}<br><b>접수마감일:</b> {deadline}")
             fe.guid(link)
             
+            count += 1
+            
         except Exception as e:
             print(f"항목 파싱 에러: {e}")
             continue
             
     # 완성된 RSS를 xml 파일로 저장
     fg.rss_file('rss.xml')
-    print("rss.xml 파일이 성공적으로 생성되었습니다.")
+    print(f"rss.xml 파일이 성공적으로 생성되었습니다. (맞춤 필터링 매칭: {count}건)")
 
 if __name__ == "__main__":
     generate_rss()
